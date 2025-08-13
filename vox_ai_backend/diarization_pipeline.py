@@ -19,7 +19,7 @@ REFERENCES = {
     "Somya": r"C:\Users\Somya Raj\Codewithme\Voxi-AI\reference_speakers\somya.wav"
 }
 
-HF_TOKEN = "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"
+HF_TOKEN = "hf_key_1234567890abcdef1234567890abcdef"  # Replace with your Hugging Face token
 
 # ----------------------------
 # FUNCTION: Convert to WAV (16 kHz mono)
