@@ -1,4 +1,0 @@
-# ASR & Language ID requirements for Voxi
-openai-whisper
-torch
-pydub
