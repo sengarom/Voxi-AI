@@ -238,7 +238,9 @@ class VoxiDiarizationPipeline:
             audio_path (str): Path to the audio file to be processed.
             num_speakers (int, optional): The exact number of speakers in the audio.
             min_speakers (int, optional): The minimum number of speakers.
-            max_speakers (int, optional): The maximum number of speakers.
+            max_speakers (int, optional): The maximum number of speakers.            MOCK_TEST_FILE = "mock_test_audio.wav"
+            ...
+            final_result = voxi_pipeline.run(MOCK_TEST_FILE)
 
         Returns:
             list: A list of dictionaries, where each dictionary represents a
@@ -334,3 +336,13 @@ except Exception as e:
     logger.exception("An error occurred during the example run.")
     logger.error("Please ensure you have 'ffmpeg' installed on your system for audio creation.")
     logger.error("For a real test, you can manually create the directory structure and use your own audio files.")
+
+# --- Diarize your own audio file ---
+YOUR_AUDIO_FILE = "my_audio.wav"  # <-- Change to your actual file name
+
+logger.info(f"--- Processing your audio file: {YOUR_AUDIO_FILE} ---")
+final_result = voxi_pipeline.run(YOUR_AUDIO_FILE)
+
+import json
+logger.info("--- Final Result ---")
+logger.info(json.dumps(final_result, indent=2))
