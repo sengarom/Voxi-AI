@@ -4,14 +4,16 @@ Voxi ASR Translation Script
 This script translates ASR output segments into English using Hugging Face MarianMT models.
 It preserves speaker labels, timestamps, and original text, and is easy to extend for more languages.
 Optimized to load each model only once per language for faster execution.
+Automatically detects language using langdetect.
 """
 
 from transformers import MarianMTModel, MarianTokenizer
+from langdetect import detect  # Language detection library
 
 # Mapping ISO language codes to MarianMT model names
 LANG_CODE_TO_MODEL = {
     "hi": "Helsinki-NLP/opus-mt-hi-en",  # Hindi to English
-    "fr": "Helsinki-NLP/opus-mt-fr-en",  # French to English (example for extension)
+    "fr": "Helsinki-NLP/opus-mt-fr-en",  # French to English
     # Add more language mappings here as needed
 }
 
@@ -46,17 +48,22 @@ def translate_text(text, src_lang):
 
 def translate_asr_segments(segments):
     """
-    Translate each ASR segment's text to English, preserving metadata.
+    Detect language and translate each ASR segment's text to English, preserving metadata.
     Adds a 'translation' key to each segment.
     """
     for seg in segments:
-        seg["translation"] = translate_text(seg["text"], seg["language"])
+        # Detect language automatically if not provided or is None/empty
+        lang = seg.get("language")
+        if not lang or lang == "":
+            lang = detect(seg["text"])
+            seg["language"] = lang  # Optionally update the segment with detected language
+        seg["translation"] = translate_text(seg["text"], lang)
     return segments
 
-# Example input: list of ASR segments
+# Example input: list of ASR segments (language field can be omitted or empty)
 example_segments = [
-    {"speaker": "SPEAKER_01", "start": 0.0, "end": 4.2, "text": "أريدك أن تكون صديقي، سأنحبك دائمًا وسأجعلك سعيدًا.", "language": "hi"},
-    {"speaker": "SPEAKER_02", "start": 4.3, "end": 7.5, "text": "I am fine, thank you.", "language": "en"}
+    {"speaker": "SPEAKER_01", "start": 0.0, "end": 4.2, "text": "Ravi de vous rencontrer", "language": ""},
+    {"speaker": "SPEAKER_02", "start": 4.3, "end": 7.5, "text": "I am fine, thank you.", "language": ""}
 ]
 
 # Translate and print results for verification
@@ -64,5 +71,6 @@ if __name__ == "__main__":
     translated_segments = translate_asr_segments(example_segments)
     for seg in translated_segments:
         print(f"Speaker: {seg['speaker']}, Start: {seg['start']}, End: {seg['end']}")
+        print(f"Detected Language: {seg['language']}")
         print(f"Original Text: {seg['text']}")
         print(f"Translated Text: {seg['translation']}")
