@@ -5,7 +5,7 @@ speechbrain
 scipy
 torch
 langdetect
-whisper
+openai-whisper
 librosa
 transformers
 ffmpeg
