@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Voxi AI</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+body {
+    margin: 0;
+    font-family: 'Poppins', sans-serif;
+    color: #fff;
+    overflow-x: hidden;
+    background: linear-gradient(120deg, #6a11cb, #5dade2, #9b59b6);
+    background-size: 400% 400%;
+    animation: gradientBG 20s ease infinite;
+}
+@keyframes gradientBG {0%{background-position:0% 50%;}50%{background-position:100% 50%;}100%{background-position:0% 50%;}}
+
+.audio-shape {position: fixed; border-radius: 50%; opacity: 0.2; z-index: 0; box-shadow: 0 0 15px rgba(0,0,0,0.4);}
+@keyframes floatBubble {0% {transform: translateY(0);}100% {transform: translateY(-120vh);}}
+
+.hero {
+    height: 100vh; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; position: relative; z-index:2; transition: opacity 0.5s, transform 0.5s;
+}
+.hero h1 {
+    font-size:5rem; font-weight:800;
+    background: linear-gradient(90deg,#ff6a00,#ee0979);
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+    text-shadow: 2px 3px 10px rgba(0,0,0,0.4);
+}
+.hero p {font-size:1.5rem; font-weight:500; margin-top:15px; opacity:0.9;}
+.start-btn {margin-top:30px; padding:15px 35px; font-size:1.3rem; font-weight:600; border:none; border-radius:15px; background: linear-gradient(90deg,#ff6a00,#ee0979); cursor:pointer; transition: transform 0.2s, box-shadow 0.2s;}
+.start-btn:hover {transform:scale(1.05); box-shadow: 0 5px 20px rgba(238,9,121,0.5);}
+.wave-icon {font-size:3rem; margin-top:15px; animation: pulse 1.2s infinite;}
+@keyframes pulse {0%{transform:scale(1);}50%{transform:scale(1.2);}100%{transform:scale(1);}}
+
+.panels-container {display:none; flex-direction:column; align-items:center;}
+.panel {background: rgba(255,255,255,0.05); backdrop-filter:blur(15px); border-radius:20px; padding:30px; width:90%; max-width:700px; margin:50px auto; box-shadow:0 10px 25px rgba(0,0,0,0.4); position:relative; z-index:2; transition: transform 0.5s, opacity 0.5s; opacity:0; transform: translateY(50px);}
+.panel.show {opacity:1; transform:translateY(0);}
+.panel:hover {transform: translateY(-5px); box-shadow:0 15px 35px rgba(0,0,0,0.5);}
+.panel h2 {margin-bottom:15px;}
+
+.buttons {display:flex; justify-content:center; gap:15px; margin-top:15px;}
+button {background: linear-gradient(90deg,#ff6a00,#ee0979); border:none; padding:14px 28px; border-radius:12px; font-size:1.1rem; font-weight:600; cursor:pointer; transition: transform 0.2s, box-shadow 0.2s;}
+button:hover {transform: scale(1.05); box-shadow: 0 5px 20px rgba(238,9,121,0.5);}
+
+.status {margin-top:12px; font-size:0.95rem; opacity:0.85;}
+#speakerList div {margin:8px 0; padding:12px; border-radius:12px; background:rgba(255,255,255,0.05); display:flex; align-items:center; gap:10px; transition: transform 0.2s, background 0.2s;}
+#speakerList div:hover {transform:scale(1.03); background:rgba(255,105,180,0.2);}
+.currentSpeaker {background:rgba(255,105,180,0.35);}
+.micIcon {font-size:1.3rem;}
+.languageTag {font-size:0.85rem; opacity:0.85; padding:2px 6px; border-radius:5px; background: rgba(255,255,255,0.15);}
+.soundwave {display:flex; align-items:flex-end; gap:2px; height:30px; margin-left:10px;}
+.soundwave div {width:4px; transition:height 0.1s ease; background:#ff69b4;}
+
+textarea {width:100%; height:120px; border-radius:12px; border:none; padding:12px; font-size:1rem; resize:none; background: rgba(255,255,255,0.05); color:#fff;}
+footer {text-align:center; padding:20px; opacity:0.7; font-size:0.9rem; margin-bottom:20px; z-index:2; position:relative;}
+</style>
+</head>
+<body>
+
+<script>
+const bubbleCount=25;
+for(let i=0;i<bubbleCount;i++){
+    const bubble=document.createElement('div');
+    bubble.className='audio-shape';
+    const size=Math.random()*25+20;
+    bubble.style.width=`${size}px`;
+    bubble.style.height=`${size}px`;
+    bubble.style.left=`${Math.random()*100}vw`;
+    bubble.style.bottom=`${-50 - Math.random()*100}px`;
+    bubble.style.background=`rgba(200,200,200,${Math.random()*0.25+0.2})`;
+    bubble.style.animation=`floatBubble ${15 + Math.random()*10}s linear infinite`;
+    document.body.appendChild(bubble);
+}
+</script>
+
+<div class="hero" id="landingHero">
+    <h1>Voxi AI</h1>
+    <p>🎤 Real-time multi-speaker transcription & translation 🌏</p>
+    <div class="wave-icon">📶🎶</div>
+    <button class="start-btn" id="startBtn">Start ➤</button>
+</div>
+
+<div class="panels-container" id="mainPanels">
+    <div class="panel" id="uploadPanel">
+        <h2>Upload or Record Audio</h2>
+        <div class="buttons">
+            <input type="file" id="fileInput" accept="audio/*" style="display:none;">
+            <button id="uploadBtn">Upload Audio</button>
+            <button id="recordBtn">🎤 Record</button>
+        </div>
+        <div class="status" id="statusText">Waiting for audio...</div>
+    </div>
+
+    <div class="panel" id="speakerPanel">
+        <h2>Speakers</h2>
+        <div id="speakerList"></div>
+    </div>
+
+    <div class="panel" id="transcriptionPanel">
+        <h2>Transcription</h2>
+        <textarea id="transcription" readonly></textarea>
+    </div>
+
+    <div class="panel" id="translationPanel">
+        <h2>Translation</h2>
+        <textarea id="translation" readonly></textarea>
+    </div>
+    <footer>Made with ❤️ Voxi AI</footer>
+</div>
+
+<script>
+const startBtn=document.getElementById("startBtn");
+const landingHero=document.getElementById("landingHero");
+const mainPanels=document.getElementById("mainPanels");
+startBtn.addEventListener("click",()=>{
+    landingHero.style.opacity=0;
+    landingHero.style.transform="translateY(-50px)";
+    setTimeout(()=>{
+        landingHero.style.display="none";
+        mainPanels.style.display="flex";
+        const panels=document.querySelectorAll(".panel");
+        panels.forEach((p,i)=>setTimeout(()=>p.classList.add("show"), i*400));
+        simulateProcessing();
+    },500);
+});
+
+const fileInput=document.getElementById("fileInput");
+const uploadBtn=document.getElementById("uploadBtn");
+const recordBtn=document.getElementById("recordBtn");
+const statusText=document.getElementById("statusText");
+const speakerListDiv=document.getElementById("speakerList");
+const transcriptionArea=document.getElementById("transcription");
+const translationArea=document.getElementById("translation");
+let soundwaveInterval;
+const speakerColors={"Speaker 1":"#ff6a00","Speaker 2":"#00ffcc","Speaker 3":"#ffdf00"};
+
+function highlightSpeaker(speakerId,lang){
+    clearInterval(soundwaveInterval);
+    Array.from(speakerListDiv.children).forEach(div=>{
+        const isCurrent=div.dataset.speaker===speakerId;
+        div.classList.toggle("currentSpeaker",isCurrent);
+        if(isCurrent){
+            const color=speakerColors[speakerId]||"#ff6a00";
+            div.innerHTML=`<span class="micIcon" style="color:${color}">🎤</span> ${speakerId} <span class="languageTag">${lang}</span> <div class="soundwave"></div>`;
+            const waveContainer=div.querySelector('.soundwave');
+            for(let i=0;i<6;i++){const bar=document.createElement('div'); bar.style.background=color; waveContainer.appendChild(bar);}
+            const bars=waveContainer.querySelectorAll('div');
+            soundwaveInterval=setInterval(()=>{bars.forEach(bar=>bar.style.height=`${Math.random()*30+5}px`);},120);
+        } else div.textContent=div.dataset.speaker;
+    });
+}
+
+async function simulateProcessing(file=null){
+    transcriptionArea.value=""; translationArea.value=""; speakerListDiv.innerHTML="";
+    statusText.textContent="Processing audio...";
+    const segments=[
+        {speaker_id:"Speaker 1",text_original:"नमस्ते, आप कैसे हैं?",text_english:"Hello, how are you?",lang:"HI"},
+        {speaker_id:"Speaker 2",text_original:"¡Hola! ¿Cómo estás?",text_english:"Hi! How are you?",lang:"ES"},
+        {speaker_id:"Speaker 3",text_original:"Bonjour, ça va?",text_english:"Hello, how is it going?",lang:"FR"}
+    ];
+    segments.forEach(seg=>{
+        if(!Array.from(speakerListDiv.children).some(div=>div.dataset.speaker===seg.speaker_id)){
+            const div=document.createElement("div");
+            div.dataset.speaker=seg.speaker_id;
+            div.textContent=seg.speaker_id;
+            speakerListDiv.appendChild(div);
+        }
+    });
+    for(const seg of segments){
+        highlightSpeaker(seg.speaker_id,seg.lang);
+        transcriptionArea.value+=`${seg.speaker_id} (${seg.lang}): ${seg.text_original}\n`;
+        translationArea.value+=`${seg.speaker_id}: ${seg.text_english}\n`;
+        await new Promise(r=>setTimeout(r,1200));
+    }
+    clearInterval(soundwaveInterval);
+    statusText.textContent="Audio processing complete!";
+}
+
+uploadBtn.addEventListener("click",()=>fileInput.click());
+fileInput.addEventListener("change",()=>{if(fileInput.files.length>0) simulateProcessing(fileInput.files[0]);});
+recordBtn.addEventListener("click",async ()=>{
+    const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+    const mediaRecorder=new MediaRecorder(stream); let chunks=[];
+    mediaRecorder.ondataavailable=e=>chunks.push(e.data);
+    mediaRecorder.start();
+    statusText.textContent="🎙️ Recording..."; recordBtn.textContent="⏹ Stop";
+    recordBtn.onclick=()=>mediaRecorder.stop();
+    mediaRecorder.onstop=async ()=>{
+        const blob=new Blob(chunks,{type:"audio/wav"});
+        simulateProcessing(blob);
+        recordBtn.textContent="🎤 Record";
+    };
+});
+</script>
+
+</body>
+</html>
