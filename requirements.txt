@@ -8,3 +8,10 @@ langdetect
 whisper
 librosa
 transformers
+ffmpeg
+flask
+flask-cors
+torchaudio
+sentencepiece
+sacremoses
+ffmpeg-python
