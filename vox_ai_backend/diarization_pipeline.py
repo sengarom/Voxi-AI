@@ -238,55 +238,45 @@ class VoxiDiarizationPipeline:
         return output_segments
 
 # --- Example Usage ---
+# ...existing code...
+
 if __name__ == '__main__':
-    # IMPORTANT: You need a Hugging Face auth token to run this.
-    # 1. Go to https://huggingface.co/settings/tokens
-    # 2. Create a new token with "read" permissions.
-    # 3. Paste the token here or set it as an environment variable.
-    HF_AUTH_TOKEN = os.environ.get("HF_AUTH_TOKEN", "YOUR_HUGGING_FACE_TOKEN_HERE")
+    # Use your provided Hugging Face token directly
+    HF_AUTH_TOKEN = "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"
 
-    if HF_AUTH_TOKEN == "YOUR_HUGGING_FACE_TOKEN_HERE":
-        print("\n!!! WARNING: Please provide a Hugging Face authentication token. !!!\n")
-    else:
-        # --- Setup a mock environment for demonstration ---
-        print("\n--- Setting up mock environment for demonstration ---")
+    # --- Setup a mock environment for demonstration ---
+    print("\n--- Setting up mock environment for demonstration ---")
 
-        # Create a mock enrollment directory
-        MOCK_ENROLL_DIR = "mock_enrollment_data"
-        os.makedirs(os.path.join(MOCK_ENROLL_DIR, "Alice"), exist_ok=True)
-        os.makedirs(os.path.join(MOCK_ENROLL_DIR, "Bob"), exist_ok=True)
+    # Create a mock enrollment directory
+    MOCK_ENROLL_DIR = "mock_enrollment_data"
+    os.makedirs(os.path.join(MOCK_ENROLL_DIR, "Alice"), exist_ok=True)
+    os.makedirs(os.path.join(MOCK_ENROLL_DIR, "Bob"), exist_ok=True)
 
-        # Create dummy audio files for enrollment (requires ffmpeg to be installed)
-        # In a real scenario, these would be actual audio recordings.
-        try:
-            AudioSegment.silent(duration=5000).export(os.path.join(MOCK_ENROLL_DIR, "Alice", "alice_sample1.wav"), format="wav")
-            AudioSegment.silent(duration=5000).export(os.path.join(MOCK_ENROLL_DIR, "Bob", "bob_sample1.wav"), format="wav")
-            # Create a dummy test file to process
-            MOCK_TEST_FILE = "mock_test_audio.wav"
-            AudioSegment.silent(duration=10000).export(MOCK_TEST_FILE, format="wav")
-            print("Mock files created successfully. (Note: These are silent files for structure demonstration).")
-            print("For a real test, replace these with actual audio files.")
+    # Create dummy audio files for enrollment (requires ffmpeg to be installed)
+    try:
+        AudioSegment.silent(duration=5000).export(os.path.join(MOCK_ENROLL_DIR, "Alice", "alice_sample1.wav"), format="wav")
+        AudioSegment.silent(duration=5000).export(os.path.join(MOCK_ENROLL_DIR, "Bob", "bob_sample1.wav"), format="wav")
+        MOCK_TEST_FILE = "mock_test_audio.wav"
+        AudioSegment.silent(duration=10000).export(MOCK_TEST_FILE, format="wav")
+        print("Mock files created successfully. (Note: These are silent files for structure demonstration).")
+        print("For a real test, replace these with actual audio files.")
 
-            # --- Run the pipeline ---
-            print("\n--- Initializing and running the Voxi AI Pipeline ---")
-            voxi_pipeline = VoxiDiarizationPipeline(auth_token=HF_AUTH_TOKEN)
+        print("\n--- Initializing and running the Voxi AI Pipeline ---")
+        voxi_pipeline = VoxiDiarizationPipeline(auth_token=HF_AUTH_TOKEN)
 
-            # 1. Process enrollment data first
-            voxi_pipeline.process_enrollment_data(MOCK_ENROLL_DIR)
+        voxi_pipeline.process_enrollment_data(MOCK_ENROLL_DIR)
 
-            # 2. Run the full pipeline on a test audio file
-            # Replace MOCK_TEST_FILE with a real audio file path for a meaningful result.
-            print(f"\n--- Processing test file: {MOCK_TEST_FILE} ---")
-            final_result = voxi_pipeline.run(MOCK_TEST_FILE)
+        print(f"\n--- Processing test file: {MOCK_TEST_FILE} ---")
+        final_result = voxi_pipeline.run(MOCK_TEST_FILE)
 
-            # 3. Print the final, structured result
-            import json
-            print("\n--- Final Result ---")
-            print(json.dumps(final_result, indent=2))
+        import json
+        print("\n--- Final Result ---")
+        print(json.dumps(final_result, indent=2))
 
-        except Exception as e:
-            print(f"\n--- DEMO FAILED ---")
-            print(f"An error occurred during the example run: {e}")
-            print("Please ensure you have 'ffmpeg' installed on your system for audio creation.")
-            print("For a real test, you can manually create the directory structure and use your own audio files.")
+    except Exception as e:
+        print(f"\n--- DEMO FAILED ---")
+        print(f"An error occurred during the example run: {e}")
+        print("Please ensure you have 'ffmpeg' installed on your system for audio creation.")
+        print("For a real test, you can manually create the directory structure and use your own audio files.")
 
+# ...existing code...
