@@ -520,7 +520,7 @@ function displayBackendResults(data) {
     // Show results container (keeps tabs)
     results.style.display = 'block';
 
-    // Fill transcript
+    // Fill transcript (original text only)
     const transcriptContent = document.getElementById('transcriptContent');
     transcriptContent.innerHTML = `<pre>${(data.transcript || '').trim() || 'No transcript available'}</pre>`;
 
@@ -554,9 +554,24 @@ function displayBackendResults(data) {
         </div>
     `;
 
-    // Fill translation
+    // Fill translation (English translation only)
     const translationContent = document.getElementById('translationContent');
-    translationContent.innerHTML = `<pre>${(data.translation || '').trim() || 'No translation available'}</pre>`;
+    const translationText = (data.translation || '').trim();
+    translationContent.innerHTML = `<pre>${translationText || 'No translation available'}</pre>`;
+    // Optionally hide tab if empty
+    try {
+        const tabs = document.querySelectorAll('.results-tabs .tab-btn');
+        const translationTab = Array.from(tabs).find(btn => btn.textContent.trim().toLowerCase() === 'translation');
+        if (translationTab) {
+            if (!translationText) {
+                translationTab.setAttribute('disabled', 'true');
+                translationTab.classList.add('disabled');
+            } else {
+                translationTab.removeAttribute('disabled');
+                translationTab.classList.remove('disabled');
+            }
+        }
+    } catch (_) {}
 
     // Scroll into view
     results.scrollIntoView({ behavior: 'smooth' });

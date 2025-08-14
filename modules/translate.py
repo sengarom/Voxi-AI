@@ -10,15 +10,29 @@ Automatically detects language using langdetect.
 from transformers import MarianMTModel, MarianTokenizer
 from langdetect import detect  # Language detection library
 import logging
-from typing import Optional
+from typing import Optional, List
 
 logger = logging.getLogger(__name__)
 
 # Mapping ISO language codes to MarianMT model names
 LANG_CODE_TO_MODEL = {
-    "hi": "Helsinki-NLP/opus-mt-hi-en",  # Hindi to English
-    "fr": "Helsinki-NLP/opus-mt-fr-en",  # French to English
-    # Add more language mappings here as needed
+    # Indo-European
+    "hi": "Helsinki-NLP/opus-mt-hi-en",
+    "fr": "Helsinki-NLP/opus-mt-fr-en",
+    "es": "Helsinki-NLP/opus-mt-es-en",
+    "de": "Helsinki-NLP/opus-mt-de-en",
+    "it": "Helsinki-NLP/opus-mt-it-en",
+    "pt": "Helsinki-NLP/opus-mt-pt-en",
+    "nl": "Helsinki-NLP/opus-mt-nl-en",
+    "ru": "Helsinki-NLP/opus-mt-ru-en",
+    "pl": "Helsinki-NLP/opus-mt-pl-en",
+    # Asian languages
+    "ja": "Helsinki-NLP/opus-mt-ja-en",
+    "zh": "Helsinki-NLP/opus-mt-zh-en",
+    "ko": "Helsinki-NLP/opus-mt-ko-en",
+    "bn": "Helsinki-NLP/opus-mt-bn-en",
+    "ta": "Helsinki-NLP/opus-mt-ta-en",
+    "te": "Helsinki-NLP/opus-mt-te-en",
 }
 
 # Cache for loaded models and tokenizers (keyed by model_name)
@@ -34,6 +48,9 @@ def _resolve_model_name(src_lang: str) -> Optional[str]:
     if not src_lang:
         return None
     src = src_lang.lower()
+    # Normalize longer locale codes (e.g., en-US -> en)
+    if len(src) > 2 and '-' in src:
+        src = src.split('-', 1)[0]
     # Prefer explicit mapping if present
     if src in LANG_CODE_TO_MODEL:
         return LANG_CODE_TO_MODEL[src]
@@ -62,6 +79,41 @@ def get_model_and_tokenizer(src_lang: str):
 
     return MODEL_CACHE[model_name]
 
+def _looks_like_devanagari(text: str) -> bool:
+    """Detect if text contains Devanagari characters (common in Hindi)."""
+    if not text:
+        return False
+    for ch in text:
+        if '\u0900' <= ch <= '\u097F':
+            return True
+    return False
+
+def _split_into_chunks(text: str, max_chars: int = 500) -> List[str]:
+    """Split text into manageable chunks on sentence boundaries.
+
+    Uses Hindi danda '।' and common punctuation to split, then groups into chunks
+    under max_chars to avoid truncation.
+    """
+    if not text:
+        return []
+    # Sentence-ish split for Indic + western punctuation
+    import re
+    parts = re.split(r'(?:\u0964|\.|\?|!|\n|\r)+', text)
+    parts = [p.strip() for p in parts if p and p.strip()]
+    chunks: List[str] = []
+    current = ''
+    for p in parts:
+        if not current:
+            current = p
+        elif len(current) + 1 + len(p) <= max_chars:
+            current = current + ' ' + p
+        else:
+            chunks.append(current)
+            current = p
+    if current:
+        chunks.append(current)
+    return chunks
+
 def translate_text(text: str, src_lang: str) -> str:
     """
     Translate text from src_lang to English using MarianMT.
@@ -74,9 +126,16 @@ def translate_text(text: str, src_lang: str) -> str:
         return text  # No translation needed
 
     model, tokenizer = get_model_and_tokenizer(src_lang)
-    translated = model.generate(**tokenizer(text, return_tensors="pt", padding=True, truncation=True))
-    tgt_text = [tokenizer.decode(t, skip_special_tokens=True) for t in translated]
-    return tgt_text[0]
+    # Chunk long text to avoid truncation; batch translate for speed
+    chunks = _split_into_chunks(text, max_chars=500) or [text]
+    outputs: List[str] = []
+    for i in range(0, len(chunks), 8):  # small batch size to limit memory
+        batch = chunks[i:i+8]
+        encoded = tokenizer(batch, return_tensors="pt", padding=True, truncation=True)
+        translated_tokens = model.generate(**encoded)
+        decoded = [tokenizer.decode(t, skip_special_tokens=True) for t in translated_tokens]
+        outputs.extend(decoded)
+    return '\n'.join(outputs)
 
 def translate_to_english(text: str, source_lang: Optional[str]) -> str:
     """Backward-compatible API expected by main.py.
@@ -92,10 +151,14 @@ def translate_to_english(text: str, source_lang: Optional[str]) -> str:
                 lang = detect(text) if text else "en"
             except Exception:
                 lang = "en"
+        # Normalize locale variants and fix mis-detections for Devanagari
+        if '-' in lang:
+            lang = lang.split('-', 1)[0]
+        if lang == 'en' and _looks_like_devanagari(text):
+            lang = 'hi'
 
         if lang == "en":
             return text
-
         return translate_text(text, lang)
     except Exception as exc:
         logger.warning("Translation failed (%s); returning original text", exc)

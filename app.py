@@ -128,9 +128,18 @@ def process_audio_api():
                 # 4. Build speakers list and full transcript
     speakers = []
     full_transcript = []
+    # Sequential labeling map: first seen speaker -> A, next -> B, etc.
+    label_map = {}
+    next_label_ord = ord('A')
     for seg, asr_seg in zip(diarized_segments, normalized_asr):
+        raw_spk = seg['speaker']
+        if raw_spk not in label_map:
+            label_map[raw_spk] = chr(next_label_ord)
+            next_label_ord = next_label_ord + 1 if next_label_ord < ord('Z') else ord('Z')
+        seq_label = f"Speaker {label_map[raw_spk]}"
+
         speakers.append({
-            'speaker': seg['speaker'],
+            'speaker': seq_label,
             'start': float(seg['start']),
             'end': float(seg['end']),
             'transcript': (asr_seg.get('transcription') if isinstance(asr_seg, dict) else '') or ''
@@ -141,18 +150,36 @@ def process_audio_api():
 
     # 5. Language selection from ASR segment votes
     from collections import Counter
-    langs = [seg.get('language_code') for seg in normalized_asr if isinstance(seg, dict)]
-    langs = [l for l in langs if l and l != 'unknown']
+    # Gather possible language hints from ASR output
+    langs = []
+    for seg in normalized_asr:
+        if not isinstance(seg, dict):
+            continue
+        for key in ('language_code', 'language', 'lang', 'detected_language'):
+            val = seg.get(key)
+            if val and isinstance(val, str):
+                v = val.strip().lower()
+                if v and v != 'unknown':
+                    # Normalize locale like en-US -> en
+                    if '-' in v:
+                        v = v.split('-', 1)[0]
+                    langs.append(v)
     lang = Counter(langs).most_common(1)[0][0] if langs else 'unknown'
     logger.info(f"Selected language: {lang}")
 
-    # 6. Translation
+    # 6. Translation (keep transcript as original text; translation field is English)
     try:
         translation = translate.translate_to_english(transcript, lang)
+        # Fallback: if translation came back empty but transcript seems Hindi (Devanagari), force hi->en
+        if (not translation or not translation.strip()) and any('\u0900' <= ch <= '\u097F' for ch in transcript):
+            logger.info("Empty translation but Devanagari detected; retrying with source_lang=hi")
+            translation = translate.translate_to_english(transcript, 'hi')
+        if translation is None:
+            translation = ""
     except Exception as e:
         logger.warning(f"Translation failed: {e}")
-        translation = transcript
-    logger.info("Translation complete")
+        translation = ""
+    logger.info(f"Translation complete (len transcript={len(transcript)}, len translation={len(translation)})")
 
     # 7. Build response
     response = {

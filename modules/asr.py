@@ -21,11 +21,18 @@ def detect_language(audio_16k: np.ndarray) -> tuple[str, float]:
     """
     try:
         # Ensure mono float32 16k 1D
-        if audio_16k.ndim != 1:
-            audio_16k = np.asarray(audio_16k).reshape(-1)
-        audio_16k = audio_16k.astype(np.float32)
+        audio_np = np.asarray(audio_16k)
+        if audio_np.ndim != 1:
+            audio_np = audio_np.reshape(-1)
+        # Replace NaN/Inf, ensure float32
+        audio_np = np.nan_to_num(audio_np, nan=0.0, posinf=0.0, neginf=0.0).astype(np.float32)
+        # Guard: need some audio samples
+        if audio_np.size < int(0.25 * 16000):  # < 0.25s is too short for detection
+            return "unknown", 0.0
+        # Pad/trim to 30s for stable mel shape (as Whisper expects)
+        audio_t = torch.from_numpy(audio_np)
+        audio_t = whisper.pad_or_trim(audio_t)
         # Build log-mel spectrogram expected by Whisper
-        audio_t = torch.from_numpy(audio_16k)
         mel = whisper.log_mel_spectrogram(audio_t)
         # Run language detection
         detected_lang, probs = ASR_MODEL.detect_language(mel.to(DEVICE))
@@ -66,20 +73,27 @@ def transcribe_diarized_segments(audio_path: str, diarization_output: list) -> l
 
     transcribed_segments = []
 
-    # Detect language from a longer context (first 30s) as a robust fallback
+    # Detect language from a longer context (up to first 60s) as a robust fallback
     try:
-        fallback_lang, fallback_conf = detect_language(audio_data[: int(16000 * 30)])
+        max_ctx_seconds = 60
+        ctx_samples = min(len(audio_data), int(16000 * max_ctx_seconds))
+        fallback_lang, fallback_conf = detect_language(audio_data[:ctx_samples])
     except Exception:
         fallback_lang, fallback_conf = ("unknown", 0.0)
 
     print(f"Starting transcription for {len(diarization_output)} segments...")
     for i, segment in enumerate(diarization_output):
         # Convert start/end times from seconds to sample indices
-        start_sample = int(float(segment['start_time']) * 16000)
-        end_sample = int(float(segment['end_time']) * 16000)
+        # Clamp boundaries and ensure valid ordering
+        start_sample = max(0, int(float(segment['start_time']) * 16000))
+        end_sample = max(start_sample + 1, int(float(segment['end_time']) * 16000))
 
         # Slice the audio data using numpy slicing
         segment_audio = audio_data[start_sample:end_sample]
+        if segment_audio.size == 0:
+            # Fallback: extend a tiny window if end == start
+            end_sample = min(len(audio_data), start_sample + int(0.5 * 16000))
+            segment_audio = audio_data[start_sample:end_sample]
         # Ensure float32 mono at 16k (librosa.load already mono,16k)
         segment_audio = segment_audio.astype(np.float32, copy=False)
 
@@ -102,24 +116,36 @@ def transcribe_diarized_segments(audio_path: str, diarization_output: list) -> l
             # As last resort, keep the segment guess even if low
             chosen_lang = lang_code if lang_code != 'unknown' else fallback_lang
 
-        # Always pass a language string to avoid internal detection path
-        lang_hint = chosen_lang if chosen_lang and chosen_lang != 'unknown' else 'en'
+        # Build kwargs, only pass language if we have a confident hint; otherwise let Whisper autodetect
+        transcribe_kwargs = {
+            'fp16': torch.cuda.is_available()
+        }
+        if chosen_lang and chosen_lang != 'unknown':
+            # Prefer segment detection when confident
+            if lang_code != 'unknown' and lang_conf >= 0.5:
+                transcribe_kwargs['language'] = lang_code
+            # Otherwise use file-level fallback if confident
+            elif fallback_lang != 'unknown' and fallback_conf >= 0.5:
+                transcribe_kwargs['language'] = fallback_lang
+            # else: do not pass language and allow autodetection
+
         result = ASR_MODEL.transcribe(
             input_for_whisper,
-            fp16=torch.cuda.is_available(),
-            language=lang_hint,
+            task="transcribe",
+            **transcribe_kwargs,
         )
 
         transcribed_text = result.get('text', '').strip()
 
-        # Fallback: if language detection is unreliable, use ASR result['language']
-        if lang_code == 'unknown' or lang_conf < 0.5:
-            asr_lang = result.get('language', 'unknown')
-            if asr_lang != 'unknown':
-                print(f"[LANGUAGE FALLBACK] Using ASR result language: {asr_lang}")
-            language = asr_lang if asr_lang != 'unknown' else chosen_lang
-        else:
+        # Decide final language for this segment
+        # Prefer confident segment detection; else confident file-level; else Whisper's autodetected language
+        language = None
+        if lang_code != 'unknown' and lang_conf >= 0.5:
             language = lang_code
+        elif fallback_lang != 'unknown' and fallback_conf >= 0.5:
+            language = fallback_lang
+        else:
+            language = result.get('language', 'unknown')
 
         if not transcribed_text:
             final_text = "[unintelligible]"
@@ -127,8 +153,9 @@ def transcribe_diarized_segments(audio_path: str, diarization_output: list) -> l
             confidence = -1.0
         else:
             final_text = transcribed_text
-            # Prefer explicitly detected language; fallback to result if present
-            language = lang_code if lang_code != 'unknown' else result.get('language', 'unknown')
+            # Prefer explicitly detected language; fallback to ASR result if needed
+            if not language or language == 'unknown':
+                language = result.get('language', 'unknown')
             # Whisper result object doesn't always contain 'avg_logprob'.
             # It's more reliable to check for segment-level confidence if available,
             # but for a whole-segment transcription, we'll stick with this.
@@ -139,6 +166,7 @@ def transcribe_diarized_segments(audio_path: str, diarization_output: list) -> l
             "start_time": segment['start_time'],
             "end_time": segment['end_time'],
             "language_code": language,
+            "language": language,
             "transcription": final_text,
             "confidence": round(confidence, 3) if confidence is not None else -1.0
         }
