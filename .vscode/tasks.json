@@ -1,0 +1,36 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Run Flask app",
+			"type": "shell",
+			"command": "python -u \"m:\\Voxi-AI\\app.py\"",
+			"args": [],
+			"isBackground": false,
+			"problemMatcher": [
+				"$gcc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Run Flask app with improved ASR",
+			"type": "shell",
+			"command": "python -u \"m:\\Voxi-AI\\app.py\"",
+			"isBackground": false,
+			"problemMatcher": [
+				"$gcc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Run Flask with placeholder ASR/Translation",
+			"type": "shell",
+			"command": "python -u \"m:\\Voxi-AI\\app.py\"",
+			"isBackground": false,
+			"problemMatcher": [
+				"$gcc"
+			],
+			"group": "build"
+		}
+	]
+}

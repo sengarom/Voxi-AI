@@ -641,11 +641,12 @@ body {
 }
 
 .transcript-content, .speakers-content, .languages-content, .translation-content {
-    background: #111111;
+    background: #0d0f12; /* darker but higher contrast */
     padding: 1.5rem;
     border-radius: 12px;
     min-height: 200px;
-    border: 1px solid #333333;
+    border: 1px solid #2a2f36;
+    color: #e5e7eb; /* light text */
 }
 
 .results-actions {
@@ -653,6 +654,14 @@ body {
     gap: 1rem;
     margin-top: 2rem;
     justify-content: center;
+}
+
+/* Improve readability for pre blocks inside result panes */
+.transcript-content pre,
+.translation-content pre,
+.languages-content pre,
+.speakers-content pre {
+    color: #e5e7eb;
 }
 
 /* About Section */

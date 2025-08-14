@@ -113,15 +113,15 @@
                     <div class="feature-icon">
                         <i class="fas fa-microphone"></i>
                     </div>
-                    <h3>Speech Recognition</h3>
-                    <p>Converts speech to text efficiently using state-of-the-art ASR technology.</p>
+                    <h3>Whisper ASR</h3>
+                    <p>Converts speech to text with OpenAI Whisper - state-of-the-art accuracy across 100+ languages.</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">
                         <i class="fas fa-language"></i>
                     </div>
-                    <h3>Translation</h3>
-                    <p>Translates non-English audio into English seamlessly with natural language processing.</p>
+                    <h3>Helsinki-NLP Translation</h3>
+                    <p>Translates text into English using Helsinki-NLP's high-quality machine translation models.</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">
@@ -186,11 +186,14 @@
                                 Speech Recognition
                             </label>
                             <label class="option-item">
-                                <input type="checkbox" id="translation">
+                                <input type="checkbox" id="translation" checked>
                                 <span class="checkmark"></span>
                                 Translation to English
                             </label>
                         </div>
+                        <p style="margin-top:8px;color:#94a3b8;font-size:0.9rem;">
+                            Note: Segments shorter than 1 second are not counted as new speakers.
+                        </p>
                         <button class="btn btn-primary btn-process" onclick="processAudio()">
                             <i class="fas fa-play"></i>
                             Process Audio
@@ -213,10 +216,10 @@
                 <div class="results" id="results" style="display: none;">
                     <h3>Processing Results</h3>
                     <div class="results-tabs">
-                        <button class="tab-btn active" onclick="showTab('transcript')">Transcript</button>
-                        <button class="tab-btn" onclick="showTab('speakers')">Speakers</button>
-                        <button class="tab-btn" onclick="showTab('languages')">Languages</button>
-                        <button class="tab-btn" onclick="showTab('translation')">Translation</button>
+                        <button class="tab-btn active" onclick="showTab('transcript', event)">Transcript</button>
+                        <button class="tab-btn" onclick="showTab('speakers', event)">Speakers</button>
+                        <button class="tab-btn" onclick="showTab('languages', event)">Languages</button>
+                        <button class="tab-btn" onclick="showTab('translation', event)">Translation</button>
                     </div>
                     
                     <div class="tab-content">

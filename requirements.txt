@@ -8,6 +8,8 @@ langdetect
 openai-whisper
 librosa
 transformers
+huggingface-hub
+pytorch-lightning
 ffmpeg
 flask
 flask-cors
