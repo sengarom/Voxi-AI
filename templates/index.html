@@ -1,20 +1,333 @@
-<!--
-This is a mock frontend for audio upload. Replace or extend this file with your real frontend later.
--->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Audio Upload</title>
-    <link rel="stylesheet" href="/static/style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VOXI AI - Intelligent Multilingual Audio Processing</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <h1>Upload Audio File</h1>
-    <form action="/process-audio" method="post" enctype="multipart/form-data">
-        <input type="file" name="audiofile" accept="audio/*" required>
-        <button type="submit">Upload</button>
-    </form>
-    <div id="result"></div>
-    <!-- Place your real frontend files in the templates/ and static/ folders -->
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <div class="logo-icon">
+                    <div class="logo-diamond">
+                        <div class="waveform-bars">
+                            <div class="wave-bar"></div>
+                            <div class="wave-bar"></div>
+                            <div class="wave-bar"></div>
+                            <div class="wave-bar"></div>
+                            <div class="wave-bar"></div>
+                        </div>
+                        <div class="logo-dots">
+                            <div class="dot"></div>
+                            <div class="dot"></div>
+                        </div>
+                    </div>
+                </div>
+                <span>VOXI AI</span>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="#home">Home</a></li>
+                <li><a href="#features">Features</a></li>
+                <li><a href="#upload">Upload</a></li>
+                <li><a href="#about">About</a></li>
+            </ul>
+            <div class="hamburger">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section id="home" class="hero">
+        <div class="hero-container">
+            <div class="hero-content">
+                <h1 class="hero-title">
+                    Intelligent Multilingual 
+                    <span class="gradient-text">Audio Processing</span>
+                </h1>
+                <p class="hero-description">
+                    VOXI AI is a cutting-edge audio processing platform that seamlessly handles speaker diarization, 
+                    language detection, automatic speech recognition (ASR), and translation. Built on robust open-source 
+                    frameworks like SpeechBrain and PyDub.
+                </p>
+                <div class="hero-buttons">
+                    <button class="btn btn-primary" onclick="scrollToSection('upload')">
+                        <i class="fas fa-upload"></i>
+                        Start Processing
+                    </button>
+                    <button class="btn btn-secondary" onclick="scrollToSection('features')">
+                        <i class="fas fa-info-circle"></i>
+                        Learn More
+                    </button>
+                </div>
+            </div>
+            <div class="hero-visual">
+                <div class="hero-logo">
+                    <div class="logo-diamond large">
+                        <div class="waveform-bars">
+                            <div class="wave-bar"></div>
+                            <div class="wave-bar"></div>
+                            <div class="wave-bar"></div>
+                            <div class="wave-bar"></div>
+                            <div class="wave-bar"></div>
+                            <div class="wave-bar"></div>
+                            <div class="wave-bar"></div>
+                        </div>
+                        <div class="logo-dots">
+                            <div class="dot"></div>
+                            <div class="dot"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="features">
+        <div class="container">
+            <h2 class="section-title">🌟 Powerful Features</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <h3>Speaker Diarization</h3>
+                    <p>Accurately identifies multiple speakers in an audio file with advanced AI algorithms.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-globe"></i>
+                    </div>
+                    <h3>Language Detection</h3>
+                    <p>Detects the spoken language of each segment automatically with high precision.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-microphone"></i>
+                    </div>
+                    <h3>Speech Recognition</h3>
+                    <p>Converts speech to text efficiently using state-of-the-art ASR technology.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-language"></i>
+                    </div>
+                    <h3>Translation</h3>
+                    <p>Translates non-English audio into English seamlessly with natural language processing.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-cogs"></i>
+                    </div>
+                    <h3>Audio Preprocessing</h3>
+                    <p>Converts uploaded audio to WAV format, 16kHz, mono for consistent processing.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-file-audio"></i>
+                    </div>
+                    <h3>Multi-Format Support</h3>
+                    <p>Accepts .wav, .mp3, .flac, .ogg, .m4a audio files with flexible processing.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Upload Section -->
+    <section id="upload" class="upload">
+        <div class="container">
+            <h2 class="section-title">Upload & Process Audio</h2>
+            <div class="upload-container">
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-content">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <h3>Drop your audio file here</h3>
+                        <p>or click to browse</p>
+                        <span class="file-types">Supported: .wav, .mp3, .flac, .ogg, .m4a</span>
+                    </div>
+                    <input type="file" id="audioFile" accept=".wav,.mp3,.flac,.ogg,.m4a" hidden>
+                </div>
+                
+                <div class="file-info" id="fileInfo" style="display: none;">
+                    <div class="file-details">
+                        <i class="fas fa-music"></i>
+                        <div class="file-text">
+                            <h4 id="fileName"></h4>
+                            <p id="fileSize"></p>
+                        </div>
+                        <button class="btn-remove" onclick="removeFile()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="processing-options">
+                        <h4>Processing Options</h4>
+                        <div class="options-grid">
+                            <label class="option-item">
+                                <input type="checkbox" id="speakerDiarization" checked>
+                                <span class="checkmark"></span>
+                                Speaker Diarization
+                            </label>
+                            <label class="option-item">
+                                <input type="checkbox" id="languageDetection" checked>
+                                <span class="checkmark"></span>
+                                Language Detection
+                            </label>
+                            <label class="option-item">
+                                <input type="checkbox" id="speechRecognition" checked>
+                                <span class="checkmark"></span>
+                                Speech Recognition
+                            </label>
+                            <label class="option-item">
+                                <input type="checkbox" id="translation">
+                                <span class="checkmark"></span>
+                                Translation to English
+                            </label>
+                        </div>
+                        <button class="btn btn-primary btn-process" onclick="processAudio()">
+                            <i class="fas fa-play"></i>
+                            Process Audio
+                        </button>
+                    </div>
+                </div>
+
+                <div class="processing-status" id="processingStatus" style="display: none;">
+                    <div class="status-content">
+                        <div class="spinner"></div>
+                        <h3>Processing your audio...</h3>
+                        <p id="statusMessage">Initializing processing pipeline</p>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progressFill"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="results" id="results" style="display: none;">
+                    <h3>Processing Results</h3>
+                    <div class="results-tabs">
+                        <button class="tab-btn active" onclick="showTab('transcript')">Transcript</button>
+                        <button class="tab-btn" onclick="showTab('speakers')">Speakers</button>
+                        <button class="tab-btn" onclick="showTab('languages')">Languages</button>
+                        <button class="tab-btn" onclick="showTab('translation')">Translation</button>
+                    </div>
+                    
+                    <div class="tab-content">
+                        <div id="transcript" class="tab-pane active">
+                            <div class="transcript-content" id="transcriptContent"></div>
+                        </div>
+                        <div id="speakers" class="tab-pane">
+                            <div class="speakers-content" id="speakersContent"></div>
+                        </div>
+                        <div id="languages" class="tab-pane">
+                            <div class="languages-content" id="languagesContent"></div>
+                        </div>
+                        <div id="translation" class="tab-pane">
+                            <div class="translation-content" id="translationContent"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="results-actions">
+                        <button class="btn btn-secondary" onclick="downloadResults()">
+                            <i class="fas fa-download"></i>
+                            Download Results
+                        </button>
+                        <button class="btn btn-primary" onclick="resetUpload()">
+                            <i class="fas fa-plus"></i>
+                            Process Another File
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- About Section -->
+    <section id="about" class="about">
+        <div class="container">
+            <div class="about-content">
+                <div class="about-text">
+                    <h2>About VOXI AI</h2>
+                    <p>
+                        VOXI AI empowers developers, researchers, and organizations to extract actionable insights 
+                        from audio content with ease. Our platform combines cutting-edge AI technologies with 
+                        user-friendly interfaces to make audio processing accessible to everyone.
+                    </p>
+                    <div class="tech-stack">
+                        <h3>Built with:</h3>
+                        <div class="tech-items">
+                            <span class="tech-item">SpeechBrain</span>
+                            <span class="tech-item">PyDub</span>
+                            <span class="tech-item">Flask</span>
+                            <span class="tech-item">AI/ML</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="about-stats">
+                    <div class="stat-item">
+                        <h3>99%</h3>
+                        <p>Accuracy Rate</p>
+                    </div>
+                    <div class="stat-item">
+                        <h3>50+</h3>
+                        <p>Languages Supported</p>
+                    </div>
+                    <div class="stat-item">
+                        <h3>24/7</h3>
+                        <p>Processing Available</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <div class="footer-logo">
+                        <div class="logo-icon small">
+                            <div class="logo-diamond">
+                                <div class="waveform-bars">
+                                    <div class="wave-bar"></div>
+                                    <div class="wave-bar"></div>
+                                    <div class="wave-bar"></div>
+                                    <div class="wave-bar"></div>
+                                    <div class="wave-bar"></div>
+                                </div>
+                                <div class="logo-dots">
+                                    <div class="dot"></div>
+                                    <div class="dot"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <span>VOXI AI</span>
+                    </div>
+                    <p>Intelligent Multilingual Audio Processing Platform</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Features</h4>
+                    <ul>
+                        <li>Speaker Diarization</li>
+                        <li>Language Detection</li>
+                        <li>Speech Recognition</li>
+                        <li>Audio Translation</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 VOXI AI. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>

@@ -3,7 +3,7 @@
 import os
 import time
 import logging
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 from werkzeug.utils import secure_filename
 from werkzeug.exceptions import RequestEntityTooLarge
 
@@ -28,23 +28,16 @@ app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50 MB
 if CORS:
     CORS(app)
 
+# Ensure upload directory exists even when not running via __main__
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-# Minimal HTML upload form for manual testing
 @app.route('/', methods=['GET'])
 def index():
-    return '''
-    <html>
-    <body>
-        <h2>Upload audio file for diarization, ASR, and translation</h2>
-        <form action="/process_audio" method="post" enctype="multipart/form-data">
-            <input type="file" name="file" accept="audio/*" required>
-            <button type="submit">Upload</button>
-        </form>
-    </body>
-    </html>
-    '''
+    # Render the main UI from templates/index.html
+    return render_template('index.html')
 
 # --- /process_audio API endpoint ---
 @app.route('/process_audio', methods=['POST'])
