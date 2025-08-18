@@ -1,5 +1,3 @@
-<div align="center">
-<img src="https://your-logo-url.com/voxi-ai-logo.png" alt="Voxi AI Logo" width="150" onerror="this.onerror=null;this.src='https://placehold.co/150x150/2d3748/ffffff?text=Voxi+AI';">
 <h1>Voxi AI</h1>
 <p><strong>Intelligent Multilingual Audio Processing</strong></p>
 <p>
