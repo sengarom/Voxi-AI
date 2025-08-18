@@ -1,0 +1,17 @@
+pydub
+numpy
+pyannote.audio
+speechbrain
+scipy
+torch
+langdetect
+openai-whisper
+librosa
+transformers
+ffmpeg
+flask
+flask-cors
+torchaudio
+sentencepiece
+sacremoses
+ffmpeg-python
