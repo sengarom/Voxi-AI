@@ -1,141 +1,168 @@
-# Voxi-AI: Intelligent Multilingual Audio Processing
+<div align="center">
+<img src="https://your-logo-url.com/voxi-ai-logo.png" alt="Voxi AI Logo" width="150" onerror="this.onerror=null;this.src='https://placehold.co/150x150/2d3748/ffffff?text=Voxi+AI';">
+<h1>Voxi AI</h1>
+<p><strong>Intelligent Multilingual Audio Processing</strong></p>
+<p>
+<a href="https://github.com/sengarom/Voxi-AI/stargazers"><img src="https://img.shields.io/github/stars/sengarom/Voxi-AI?style=for-the-badge&logo=github&color=00ff41" alt="Stars Badge"/></a>
+<a href="https://github.com/sengarom/Voxi-AI/network/members"><img src="https://img.shields.io/github/forks/sengarom/Voxi-AI?style=for-the-badge&logo=github&color=00ff41" alt="Forks Badge"/></a>
+<a href="https://github.com/sengarom/Voxi-AI/issues"><img src="https://img.shields.io/github/issues/sengarom/Voxi-AI?style=for-the-badge&logo=github&color=ffd700" alt="Issues Badge"/></a>
+<a href="https://github.com/sengarom/Voxi-AI/blob/main/LICENSE"><img src="https://img.shields.io/github/license/sengarom/Voxi-AI?style=for-the-badge&color=39ff14" alt="License Badge"/></a>
+</p>
+</div>
+🚀 Overview
 
-Voxi-AI is a cutting-edge audio processing platform that seamlessly handles speaker diarization, language detection, automatic speech recognition (ASR), and translation. Built on robust open-source frameworks like **SpeechBrain** and **PyDub**, Voxi-AI empowers developers, researchers, and organizations to extract actionable insights from audio content with ease.
+Voxi AI is a powerful, open-source platform designed for advanced audio analysis. It seamlessly integrates state-of-the-art AI models to provide a comprehensive suite of tools for processing multilingual audio content. Whether you're a developer, researcher, or content creator, Voxi AI empowers you to unlock valuable insights from your audio files with ease.
 
----
+Our platform offers a user-friendly web interface and a command-line tool to access its core functionalities, including speaker diarization, automatic speech recognition (ASR), language detection, and translation.
+✨ Key Features
 
-## 🌟 Features
+    🗣️ Speaker Diarization: Accurately identifies and separates different speakers in an audio file.
 
-* **Speaker Diarization**: Accurately identifies multiple speakers in an audio file.
-* **Language Detection**: Detects the spoken language of each segment.
-* **Automatic Speech Recognition (ASR)**: Converts speech to text efficiently.
-* **Translation**: Translates non-English audio into English seamlessly.
-* **Audio Preprocessing**: Converts uploaded audio to WAV format, 16kHz, mono for consistent processing.
-* **Flexible Backend**: Powered by Flask, ready to integrate with custom frontends.
-* **Multi-Format Support**: Accepts `.wav`, `.mp3`, `.flac`, `.ogg`, `.m4a` audio files.
+    🎙️ Automatic Speech Recognition (ASR): Transcribes spoken words into text with high accuracy.
 
----
+    🌍 Language Detection: Automatically detects the language being spoken in each audio segment.
 
-## 🚀 Quick Start
+    🔄 Translation: Translates transcribed text from various languages into English.
 
-### 1. Clone the Repository
+    🖥️ Web-Based UI: An intuitive and responsive interface for easy file uploads and results visualization.
 
-```bash
-git clone https://github.com/your-username/voxi-ai.git
-cd voxi-ai
-```
+    ⚙️ Flexible Processing: Supports a wide range of audio formats, including .wav, .mp3, .flac, .ogg, and .m4a.
 
-### 2. Install Dependencies
+    🔊 Audio Preprocessing: Automatically converts all uploaded audio to a standardized format (16kHz, mono WAV) for consistent and reliable processing.
 
-```bash
-pip install -r requirements.txt
-```
+🛠️ Technology Stack
 
-> ⚠️ **Note:** If `flask_cors` or `ffmpeg` is missing, install them manually:
+Voxi AI is built with a robust and scalable technology stack:
 
-```bash
-pip install flask_cors
-# and ensure ffmpeg is installed and available in PATH
-```
+    Backend: Python with Flask
 
-### 3. Run the Flask Server
+    ASR: OpenAI Whisper / SpeechBrain
 
-```bash
-python app.py
-```
+    Translation: Helsinki-NLP
 
-Visit `http://127.0.0.1:5000` in your browser.
+    Speaker Diarization: pyannote.audio / SpeechBrain
 
-### 4. Upload and Process Audio
+    Audio Manipulation: pydub
 
-* Drag and drop audio files into the web interface (when frontend is ready).
-* Supported formats: `.wav`, `.mp3`, `.flac`, `.ogg`, `.m4a`.
-* The backend processes the audio and returns:
+    Frontend: HTML5, CSS3, JavaScript
 
-  * Speaker-wise segments
-  * Language
-  * Transcript
-  * English Translation
+🏛️ Architecture and Project Structure
 
----
+The Voxi AI processing pipeline is as follows:
 
-## 🛠 Project Structure
+    File Upload: The user uploads an audio file through the web interface or specifies a file path via CLI.
 
-```
+    Audio Conversion: The uploaded file is converted to a standardized WAV format.
+
+    Speaker Diarization: The audio is analyzed to identify and timestamp speaker segments.
+
+    ASR & Language Detection: Each segment is transcribed, and its language is identified.
+
+    Translation: If a segment is not in English, it is translated.
+
+    Results Display: The processed information is sent to the frontend for display or saved to output files.
+
+Project Structure
+
 voxi-ai/
 │
-├── app.py                # Flask backend server
-├── main.py               # Core audio processing pipeline
-├── modules/              # Processing modules (ASR, diarization, translation, etc.)
-├── uploads/              # Temporary storage for uploaded files
-├── processed/            # Preprocessed audio storage
-├── templates/            # HTML templates (frontend placeholder)
-├── static/               # Static assets (CSS/JS for frontend)
-├── requirements.txt      # Python dependencies
+├── app.py             # Flask backend server
+├── main.py            # Core audio processing pipeline (for CLI)
+├── modules/           # Processing modules (ASR, diarization, translation, etc.)
+├── uploads/           # Temporary storage for uploaded files
+├── processed/         # Preprocessed audio storage
+├── templates/         # HTML templates for frontend
+├── static/            # Static assets (CSS/JS for frontend)
+├── requirements.txt   # Python dependencies
 └── README.md
-```
 
----
+🏁 Getting Started
 
-## 💡 Usage Example (CLI)
+Follow these steps to get Voxi AI up and running on your local machine.
+Prerequisites
 
-```bash
-python main.py --file sample_audio.mp3 --output result.json
-```
+    Python 3.8 or higher
 
-Output:
+    pip for package management
 
-* `result.json`: JSON file with processed segments
-* `result.txt`: Human-readable transcript with translations
+    ffmpeg: Ensure it is installed and available in your system's PATH. This is required for audio format conversion.
 
----
+Installation
 
-## 📦 Dependencies
+    Clone the repository:
 
-* Flask
-* Flask-CORS (optional for cross-origin requests)
-* PyDub
-* SpeechBrain
-* Torch & torchaudio
-* Other standard Python libraries (`argparse`, `logging`, `json`, etc.)
+    git clone https://github.com/sengarom/Voxi-AI.git
+    cd Voxi-AI
 
----
+    Install the required packages:
 
-## 🔧 Best Practices
+    pip install -r requirements.txt
 
-* Keep uploaded audio under **50 MB** for smooth processing.
-* Ensure `ffmpeg` is installed for PyDub audio conversions.
-* Test with multiple speakers and languages to evaluate accuracy.
-* For production, consider adding authentication and secure file handling.
+    Run the application:
 
----
+    python app.py
 
-## 🌐 Future Enhancements
+    Access the web interface:
+    Open your browser and navigate to http://127.0.0.1:5000.
 
-* **Real-time streaming processing**
-* **Advanced translation models**
-* **Interactive web frontend**
-* **Enhanced speaker identification with profiles**
-* **Support for more audio formats and sampling rates**
+📖 How to Use
+Using the Web Interface
 
----
+    Upload an Audio File: Drag and drop or browse to select an audio file.
 
-## 🤝 Contributing
+    Select Options: Choose the processing tasks you want to perform.
 
-We welcome contributions from developers and researchers!
+    Process: Click the "Process Audio" button to start the analysis.
 
-1. Fork the repository
-2. Create a new branch for your feature: `git checkout -b feature-name`
-3. Commit your changes: `git commit -m 'Add new feature'`
-4. Push to the branch: `git push origin feature-name`
-5. Open a pull request
+    View Results: The results will be displayed in organized tabs for the transcript, speakers, and translation.
 
----
+Using the Command-Line Interface (CLI)
 
-## 📄 License
+You can also process files directly from your terminal.
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+python main.py --file path/to/your/sample_audio.mp3 --output result.json
 
----
+This will generate result.json with the structured output and result.txt with a human-readable transcript.
+🔧 Best Practices
 
-*Transform your audio into actionable insights with Voxi-AI!*
+    For best performance, keep uploaded audio files under 50 MB.
+
+    Ensure audio quality is clear and has minimal background noise for higher accuracy.
+
+    For production environments, consider implementing authentication and more robust file handling.
+
+🌐 Future Enhancements
+
+    Real-time streaming processing
+
+    Integration of more advanced translation models
+
+    Enhanced speaker identification with voice profiles
+
+    Support for a wider range of audio formats and sampling rates
+
+🤝 How to Contribute
+
+We welcome contributions from the community! If you'd like to help improve Voxi AI, please follow these steps:
+
+    Fork the repository.
+
+    Create a new branch for your feature or bug fix: git checkout -b feature-name.
+
+    Make your changes and commit them with a clear message.
+
+    Push your changes to your fork.
+
+    Create a pull request to the main branch of this repository.
+
+Please read our CONTRIBUTING.md for more information.
+📄 License
+
+This project is licensed under the MIT License. See the LICENSE file for details.
+📧 Contact
+
+If you have any questions, suggestions, or feedback, please feel free to reach out by opening an issue on GitHub.
+
+<div align="center">
+<p>Made with ❤️ by the Voxi AI Team</p>
+</div>

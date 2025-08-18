@@ -1,221 +1,177 @@
-# combined_asr_script.py
-
-import whisper
-import torch
-import librosa
+# Revised and Fixed asr.py
+import os
+import logging
 import numpy as np
-from pprint import pprint
+import torch
+import whisper
+from pydub import AudioSegment
+from typing import Dict, Any, Optional
 
-# --- Model Loading ---
-# This part runs only once when the module is first imported or the script is run.
-print("Loading ASR model...")
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-ASR_MODEL = whisper.load_model("base", device=DEVICE)
-print(f"ASR model loaded on device: {DEVICE}")
+logger = logging.getLogger("VoxiAPI")
 
-def detect_language(audio_16k: np.ndarray) -> tuple[str, float]:
+# --- Model Management ---
+_whisper_model: Optional[whisper.Whisper] = None
+
+def get_whisper_model(model_name: str = "medium") -> whisper.Whisper:
     """
-    Detect language for a mono, 16 kHz float32 waveform using Whisper's detector.
-    Uses log-mel spectrogram as input (expected by Whisper) for robust behavior.
-    Returns (ISO 639-1 code, confidence) or ("unknown", 0.0) on failure.
+    Loads the Whisper model lazily and caches it.
+    Uses the 'medium' model by default for a good balance of accuracy and speed.
+    """
+    global _whisper_model
+    if _whisper_model is None:
+        try:
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+            logger.info(f"Loading Whisper '{model_name}' model on '{device}' device...")
+            _whisper_model = whisper.load_model(model_name, device=device)
+            logger.info(f"Whisper '{model_name}' model loaded successfully.")
+        except Exception as e:
+            logger.error(f"Fatal error: Failed to load Whisper model: {e}")
+            raise  # Re-raise the exception to halt execution if the model can't load
+    return _whisper_model
+
+# --- Audio Processing ---
+def _load_and_prepare_audio(
+    audio_path: str,
+    start_time: Optional[float] = None,
+    end_time: Optional[float] = None,
+) -> np.ndarray:
+    """
+    A single, unified function to load, segment, and prepare audio for Whisper.
+    Converts audio to mono, 16kHz, and float32 format as required by Whisper.
     """
     try:
-        # Ensure mono float32 16k 1D
-        audio_np = np.asarray(audio_16k)
-        if audio_np.ndim != 1:
-            audio_np = audio_np.reshape(-1)
-        # Replace NaN/Inf, ensure float32
-        audio_np = np.nan_to_num(audio_np, nan=0.0, posinf=0.0, neginf=0.0).astype(np.float32)
-        # Guard: need some audio samples
-        if audio_np.size < int(0.25 * 16000):  # < 0.25s is too short for detection
-            return "unknown", 0.0
-        # Pad/trim to 30s for stable mel shape (as Whisper expects)
-        audio_t = torch.from_numpy(audio_np)
-        audio_t = whisper.pad_or_trim(audio_t)
-        # Build log-mel spectrogram expected by Whisper
-        mel = whisper.log_mel_spectrogram(audio_t)
-        # Run language detection
-        detected_lang, probs = ASR_MODEL.detect_language(mel.to(DEVICE))
-        # 'probs' might be a dict (most versions) or a sequence; handle both
-        if isinstance(probs, dict):
-            lang = max(probs, key=probs.get)
-            conf = float(probs.get(lang, 0.0))
-        else:
-            # Fallback: use detected_lang and best-effort confidence
-            lang = detected_lang if isinstance(detected_lang, str) else "unknown"
-            try:
-                conf = float(max(probs)) if hasattr(probs, '__iter__') else 0.0
-            except Exception:
-                conf = 0.0
-        return lang, conf
+        audio = AudioSegment.from_file(audio_path)
+
+        # 1. Extract segment if start and end times are provided
+        if start_time is not None and end_time is not None:
+            start_ms = int(start_time * 1000)
+            end_ms = int(end_time * 1000)
+            audio = audio[start_ms:end_ms]
+
+        # 2. Resample to 16kHz (Whisper's required sample rate)
+        if audio.frame_rate != 16000:
+            audio = audio.set_frame_rate(16000)
+
+        # 3. Convert to mono
+        if audio.channels > 1:
+            audio = audio.set_channels(1)
+
+        # 4. Convert to float32 numpy array and normalize to [-1.0, 1.0]
+        # pydub stores samples as signed 16-bit integers (from -32768 to 32767)
+        samples = np.array(audio.get_array_of_samples()).astype(np.float32)
+        samples /= 32768.0
+
+        return samples
+
     except Exception as e:
-        print(f"Language detection failed: {e}")
-        return "unknown", 0.0
+        logger.error(f"Failed to load or process audio file '{audio_path}': {e}")
+        return np.array([], dtype=np.float32) # Return an empty array on failure
+
+# --- Core ASR Functions ---
+def transcribe_audio_segment(audio_data: np.ndarray) -> Dict[str, Any]:
+    """
+    Transcribes a single audio segment (as a numpy array) using Whisper.
+    This function now expects a pre-processed numpy array.
+    """
+    if not isinstance(audio_data, np.ndarray) or audio_data.size == 0:
+        logger.warning("Received empty or invalid audio data for transcription.")
+        return {"text": "", "language": "unknown", "avg_logprob": -1.0}
+
+    try:
+        model = get_whisper_model()
+
+        # Set transcription options.
+        # verbose=None will show progress bars for long files.
+        transcribe_options = {
+            "task": "transcribe",
+            "fp16": torch.cuda.is_available(),
+            "verbose": None,
+            "word_timestamps": False  # Set to True if you need word-level timings
+        }
+
+        # Let Whisper handle audio length; no need to manually truncate.
+        result = model.transcribe(audio_data, **transcribe_options)
+
+        # Calculate an average confidence score (log probability)
+        # Note: This is a pseudo-confidence score. Higher is better.
+        avg_logprob = result.get("avg_logprob", -1.0)
+        if "segments" in result and result["segments"]:
+            logprobs = [s['avg_logprob'] for s in result['segments'] if 'avg_logprob' in s]
+            if logprobs:
+                avg_logprob = sum(logprobs) / len(logprobs)
+
+        return {
+            "text": result.get("text", "").strip(),
+            "language": result.get("language", "unknown"),
+            "avg_logprob": avg_logprob,
+        }
+    except Exception as e:
+        logger.error(f"Whisper transcription failed for a segment: {e}")
+        return {"text": "[Transcription Error]", "language": "unknown", "avg_logprob": -1.0}
+
 
 def transcribe_diarized_segments(audio_path: str, diarization_output: list) -> list:
     """
-    Transcribes diarized audio segments using Whisper.
-
-    Args:
-        audio_path (str): The full path to the input audio file.
-        diarization_output (list): A list of segment dictionaries from the diarization module.
-
-    Returns:
-        list: An enriched list of dictionaries with transcription data.
+    Transcribes a list of diarized segments from an audio file.
     """
-    try:
-        # librosa.load handles opening, decoding, and resampling to 16kHz all in one step.
-        # This is much more robust than the previous method.
-        audio_data, _ = librosa.load(audio_path, sr=16000, mono=True)
-    except Exception as e:
-        print(f"Error loading audio file with librosa: {e}")
-        return []
+    results = []
+    logger.info(f"Starting Whisper transcription for {len(diarization_output)} diarized segments...")
 
-    transcribed_segments = []
+    for i, segment_info in enumerate(diarization_output):
+        start = segment_info.get("start")
+        end = segment_info.get("end")
+        speaker = segment_info.get("speaker", "UNK")
 
-    # Detect language from a longer context (up to first 60s) as a robust fallback
-    try:
-        max_ctx_seconds = 60
-        ctx_samples = min(len(audio_data), int(16000 * max_ctx_seconds))
-        fallback_lang, fallback_conf = detect_language(audio_data[:ctx_samples])
-    except Exception:
-        fallback_lang, fallback_conf = ("unknown", 0.0)
+        # Load and prepare just the audio for this specific segment
+        audio_segment_data = _load_and_prepare_audio(audio_path, start_time=start, end_time=end)
 
-    print(f"Starting transcription for {len(diarization_output)} segments...")
-    for i, segment in enumerate(diarization_output):
-        # Convert start/end times from seconds to sample indices
-        # Clamp boundaries and ensure valid ordering
-        start_sample = max(0, int(float(segment['start_time']) * 16000))
-        end_sample = max(start_sample + 1, int(float(segment['end_time']) * 16000))
+        if audio_segment_data.size == 0:
+            logger.warning(f"Skipping empty audio segment {i+1} for speaker {speaker}")
+            continue
 
-        # Slice the audio data using numpy slicing
-        segment_audio = audio_data[start_sample:end_sample]
-        if segment_audio.size == 0:
-            # Fallback: extend a tiny window if end == start
-            end_sample = min(len(audio_data), start_sample + int(0.5 * 16000))
-            segment_audio = audio_data[start_sample:end_sample]
-        # Ensure float32 mono at 16k (librosa.load already mono,16k)
-        segment_audio = segment_audio.astype(np.float32, copy=False)
-
-        # NOTE: For very short segments, language detection may be unreliable.
-        # Skip detection for segments <0.6s and use fallback
-        if (end_sample - start_sample) < int(0.6 * 16000):
-            lang_code, lang_conf = ("unknown", 0.0)
-        else:
-            lang_code, lang_conf = detect_language(segment_audio)
-
-        # Always pass raw 1D float32 audio to Whisper; it will compute mel internally
-        input_for_whisper = segment_audio
-
-        # Choose a stable language hint: prefer segment detection if confident, else file-level
-        if lang_code != 'unknown' and lang_conf >= 0.5:
-            chosen_lang = lang_code
-        elif fallback_lang != 'unknown' and fallback_conf >= 0.5:
-            chosen_lang = fallback_lang
-        else:
-            # As last resort, keep the segment guess even if low
-            chosen_lang = lang_code if lang_code != 'unknown' else fallback_lang
-
-        # Build kwargs, only pass language if we have a confident hint; otherwise let Whisper autodetect
-        transcribe_kwargs = {
-            'fp16': torch.cuda.is_available()
-        }
-        if chosen_lang and chosen_lang != 'unknown':
-            # Prefer segment detection when confident
-            if lang_code != 'unknown' and lang_conf >= 0.5:
-                transcribe_kwargs['language'] = lang_code
-            # Otherwise use file-level fallback if confident
-            elif fallback_lang != 'unknown' and fallback_conf >= 0.5:
-                transcribe_kwargs['language'] = fallback_lang
-            # else: do not pass language and allow autodetection
-
-        result = ASR_MODEL.transcribe(
-            input_for_whisper,
-            task="transcribe",
-            **transcribe_kwargs,
-        )
-
-        transcribed_text = result.get('text', '').strip()
-
-        # Decide final language for this segment
-        # Prefer confident segment detection; else confident file-level; else Whisper's autodetected language
-        language = None
-        if lang_code != 'unknown' and lang_conf >= 0.5:
-            language = lang_code
-        elif fallback_lang != 'unknown' and fallback_conf >= 0.5:
-            language = fallback_lang
-        else:
-            language = result.get('language', 'unknown')
-
-        if not transcribed_text:
-            final_text = "[unintelligible]"
-            language = "unknown"
-            confidence = -1.0
-        else:
-            final_text = transcribed_text
-            # Prefer explicitly detected language; fallback to ASR result if needed
-            if not language or language == 'unknown':
-                language = result.get('language', 'unknown')
-            # Whisper result object doesn't always contain 'avg_logprob'.
-            # It's more reliable to check for segment-level confidence if available,
-            # but for a whole-segment transcription, we'll stick with this.
-            confidence = result.get('avg_logprob', -1.0)
+        # Perform transcription on the prepared segment
+        asr_result = transcribe_audio_segment(audio_segment_data)
 
         enriched_segment = {
-            "speaker": segment['speaker'],
-            "start_time": segment['start_time'],
-            "end_time": segment['end_time'],
-            "language_code": language,
-            "language": language,
-            "transcription": final_text,
-            "confidence": round(confidence, 3) if confidence is not None else -1.0
+            "speaker": speaker,
+            "start_time": start,
+            "end_time": end,
+            "transcription": asr_result["text"],
+            "language": asr_result["language"],
+            "confidence": asr_result["avg_logprob"], # Using avg_logprob as confidence
         }
-        transcribed_segments.append(enriched_segment)
-        print(f"  Processed segment {i+1}/{len(diarization_output)}: Speaker {segment['speaker']} -> '{final_text[:50]}...'")
+        results.append(enriched_segment)
+        logger.info(f"Processed segment {i+1}/{len(diarization_output)}: Speaker {speaker} -> '{asr_result['text'][:60]}...'")
 
-    print("Transcription complete.")
-    return transcribed_segments
+    logger.info("Whisper transcription for all diarized segments completed.")
+    return results
 
 
-def run_test():
+def translate_audio_to_english(audio_path: str) -> str:
     """
-    A simple function to test our ASR module with mock data.
+    Translates the entire audio content of a file directly to English using Whisper.
     """
-    print("\n--- Starting ASR Module Standalone Test ---")
-
-    # This is mock output, like the data that would be provided by the diarization module.
-    mock_diarization_data = [
-        {'speaker': 'SPEAKER_00', 'start_time': '0.00', 'end_time': '10.00'},
-        # You could add more segments here to test further
-        # {'speaker': 'SPEAKER_01', 'start_time': '10.50', 'end_time': '15.00'},
-    ]
-
-    # You must have a sample audio file named 'sample_audio.mp3' in the same directory.
-    # Create a dummy one if you don't have it for testing purposes.
-    mock_audio_file = 'sample_audio.mp3'
-    
     try:
-        # Check if the mock audio file exists before running
-        with open(mock_audio_file, 'rb') as f:
-            pass
-        
-        # This is the function call the Django app will eventually make.
-        final_output = transcribe_diarized_segments(
-            audio_path=mock_audio_file,
-            diarization_output=mock_diarization_data
-        )
+        model = get_whisper_model()
+        logger.info(f"Starting translation for audio file: {audio_path}")
 
-        print("\n--- Final Enriched Output ---")
-        if final_output:
-            pprint(final_output)
-        else:
-            print("Processing failed. Please check for errors above.")
-            
-    except FileNotFoundError:
-        print(f"\nERROR: The test audio file '{mock_audio_file}' was not found.")
-        print("Please place a valid audio file with this name in the same directory to run the test.")
+        # Use the unified function to load the entire audio file
+        # Whisper will process it in 30-second chunks automatically
+        audio_data = _load_and_prepare_audio(audio_path)
 
+        if audio_data.size == 0:
+            return "[Translation failed: Could not load audio]"
 
-# This line ensures the test runs only when you execute this file directly.
-if __name__ == '__main__':
-    run_test()
+        translate_options = {
+            "task": "translate",
+            "fp16": torch.cuda.is_available(),
+        }
+
+        result = model.transcribe(audio_data, **translate_options)
+        translation = result.get("text", "").strip()
+        logger.info(f"Translation successful: '{translation[:80]}...'")
+        return translation
+
+    except Exception as e:
+        logger.error(f"Audio translation failed: {e}")
+        return f"[Translation Error: {e}]"

@@ -46,10 +46,10 @@ document.addEventListener('DOMContentLoaded', function() {
     window.addEventListener('scroll', function() {
         const navbar = document.querySelector('.navbar');
         if (window.scrollY > 50) {
-            navbar.style.background = 'rgba(255, 255, 255, 0.98)';
-            navbar.style.boxShadow = '0 2px 20px rgba(0, 0, 0, 0.1)';
+            navbar.style.background = 'rgba(0, 0, 0, 0.98)';
+            navbar.style.boxShadow = '0 2px 20px rgba(0, 255, 65, 0.1)';
         } else {
-            navbar.style.background = 'rgba(255, 255, 255, 0.95)';
+            navbar.style.background = 'rgba(0, 0, 0, 0.95)';
             navbar.style.boxShadow = 'none';
         }
     });
@@ -332,7 +332,7 @@ function displayResults(results) {
 }
 
 // Tab functionality
-function showTab(tabName) {
+function showTab(tabName, clickEvent) {
     // Hide all tab panes
     const tabPanes = document.querySelectorAll('.tab-pane');
     tabPanes.forEach(pane => pane.classList.remove('active'));
@@ -347,8 +347,19 @@ function showTab(tabName) {
         selectedPane.classList.add('active');
     }
 
-    // Add active class to clicked button
-    event.target.classList.add('active');
+    // Add active class to clicked button or find the button if called programmatically
+    let targetButton;
+    if (clickEvent && clickEvent.target) {
+        targetButton = clickEvent.target;
+    } else {
+        // If called programmatically, find the corresponding button
+        targetButton = Array.from(tabButtons).find(
+            btn => btn.getAttribute('onclick').includes(`'${tabName}'`)
+        );
+    }
+    if (targetButton) {
+        targetButton.classList.add('active');
+    }
 }
 
 // Utility functions
@@ -442,8 +453,18 @@ function downloadResults() {
         content += String(processingResults.language).toUpperCase() + '\n\n';
     }
     
+    // Include per-segment translations when available
+    const segsWithTranslations = Array.isArray(processingResults.speakers) ? processingResults.speakers.filter(s => (s.translation || '').trim()) : [];
+    if (segsWithTranslations.length > 0) {
+        content += 'TRANSLATION (per speaker):\n';
+        segsWithTranslations.forEach(s => {
+            const spk = (s.speaker || 'Speaker');
+            content += `[${spk}] ${s.translation}\n`;
+        });
+        content += '\n';
+    }
     if (processingResults.translation) {
-        content += 'TRANSLATION:\n';
+        content += 'TRANSLATION (combined):\n';
         content += processingResults.translation + '\n';
     }
 
@@ -480,6 +501,7 @@ function uploadAndProcessAudio(options) {
     // Pass options to backend (backend may ignore them)
     try {
         if (options && typeof options === 'object') {
+            // No additional options to add
             formData.append('options', JSON.stringify(options));
         }
     } catch (_) {}
@@ -502,6 +524,19 @@ function uploadAndProcessAudio(options) {
         statusMessage.textContent = 'Done!';
         setTimeout(() => {
             processingStatus.style.display = 'none';
+            // Respect translation option on UI
+            try {
+                const translateChecked = document.getElementById('translation').checked;
+                if (!translateChecked) {
+                    data.translation = '';
+                    if (Array.isArray(data.speakers)) {
+                        data.speakers = data.speakers.map(s => ({
+                            ...s,
+                            translation: ''
+                        }));
+                    }
+                }
+            } catch (_) {}
             displayBackendResults(data);
         }, 500);
         console.log('Backend response:', data);
@@ -520,9 +555,24 @@ function displayBackendResults(data) {
     // Show results container (keeps tabs)
     results.style.display = 'block';
 
-    // Fill transcript (original text only)
+    // Fill transcript (optionally show English per speaker)
     const transcriptContent = document.getElementById('transcriptContent');
-    transcriptContent.innerHTML = `<pre>${(data.transcript || '').trim() || 'No transcript available'}</pre>`;
+    const speakersArr = Array.isArray(data.speakers) ? data.speakers : [];
+    const showEnglish = (() => { try { return document.getElementById('showEnglishTranscript').checked; } catch(_) { return false; } })();
+    if (speakersArr.length) {
+        const blocks = speakersArr.map(s => {
+            const spk = (s.speaker || 'Speaker').toString();
+            const start = (s.start ?? '').toString();
+            const end = (s.end ?? '').toString();
+            const baseText = (s.transcript || '').toString().trim();
+            const engText = (s.translation || '').toString().trim();
+            const text = showEnglish && engText ? engText : baseText;
+            return `<div class="speaker-item"><h4>${spk} <small style="color:#94a3b8">(${start}s–${end}s)</small></h4><p>${text || '<em>No transcript</em>'}</p></div>`;
+        }).join('');
+        transcriptContent.innerHTML = blocks;
+    } else {
+        transcriptContent.innerHTML = `<pre>${(data.transcript || '').trim() || 'No transcript available'}</pre>`;
+    }
 
     // Fill speakers
     const speakersContent = document.getElementById('speakersContent');
@@ -554,24 +604,48 @@ function displayBackendResults(data) {
         </div>
     `;
 
-    // Fill translation (English translation only)
+    // --- Translation Tab Logic ---
     const translationContent = document.getElementById('translationContent');
-    const translationText = (data.translation || '').trim();
-    translationContent.innerHTML = `<pre>${translationText || 'No translation available'}</pre>`;
-    // Optionally hide tab if empty
-    try {
-        const tabs = document.querySelectorAll('.results-tabs .tab-btn');
-        const translationTab = Array.from(tabs).find(btn => btn.textContent.trim().toLowerCase() === 'translation');
-        if (translationTab) {
-            if (!translationText) {
-                translationTab.setAttribute('disabled', 'true');
-                translationTab.classList.add('disabled');
-            } else {
-                translationTab.removeAttribute('disabled');
-                translationTab.classList.remove('disabled');
-            }
+    const translationTabButton = Array.from(document.querySelectorAll('.results-tabs .tab-btn')).find(btn => btn.getAttribute('onclick').includes("'translation'"));
+    
+    const perSegmentTranslations = (Array.isArray(data.speakers) ? data.speakers : []).filter(s => (s.translation || '').trim());
+    const fullTranslation = (data.translation || '').trim();
+    
+    // Determine if there is any meaningful translation to show
+    const hasTranslation = perSegmentTranslations.length > 0 || (fullTranslation && fullTranslation !== data.transcript);
+
+    if (hasTranslation) {
+        // 1. Populate the translation tab content
+        if (perSegmentTranslations.length > 0) {
+            translationContent.innerHTML = perSegmentTranslations.map(s => {
+                const spk = (s.speaker || 'Speaker').toString();
+                const text = (s.translation || '').toString();
+                return `<div class="speaker-item"><h4>${spk}</h4><p>${text}</p></div>`;
+            }).join('');
+        } else {
+            translationContent.innerHTML = `<pre>${fullTranslation}</pre>`;
         }
-    } catch (_) {}
+
+        // 2. Enable the translation tab button
+        if (translationTabButton) {
+            translationTabButton.removeAttribute('disabled');
+            translationTabButton.classList.remove('disabled');
+        }
+
+        // 3. If user requested translation, switch to that tab
+        if (document.getElementById('translation').checked) {
+            showTab('translation');
+        }
+    } else {
+        // No translation available
+        translationContent.innerHTML = '<p>No translation available or text was already in English.</p>';
+        
+        // Disable the tab
+        if (translationTabButton) {
+            translationTabButton.setAttribute('disabled', 'true');
+            translationTabButton.classList.add('disabled');
+        }
+    }
 
     // Scroll into view
     results.scrollIntoView({ behavior: 'smooth' });
